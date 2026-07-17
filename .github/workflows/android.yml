@@ -23,6 +23,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
+          check-latest: true
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
@@ -59,6 +60,19 @@ jobs:
           # 安装与项目 compileSdk 匹配的 platform-tools、platform 和 build-tools
           # 根据 libs.versions.toml 中的配置调整版本号
           sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+        shell: bash
+
+      - name: Create gradle.properties for CI
+        run: |
+          set -eux
+          cat >> gradle.properties <<'EOF'
+          # Disable JetBrains toolchain auto-download
+          org.gradle.java.installations.auto-download=false
+          org.gradle.jvm.version=21
+          # Gradle daemon configuration
+          org.gradle.daemon=false
+          EOF
+          echo "✅ gradle.properties created successfully"
         shell: bash
 
       - name: Create local.properties and temporary keystore for CI
