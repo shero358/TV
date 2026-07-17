@@ -9,10 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-      ANDROID_SDK_ROOT: ${{ runner.home }}/Android/Sdk
-      ANDROID_HOME: ${{ runner.home }}/Android/Sdk
 
     steps:
       - name: Checkout
@@ -37,9 +33,12 @@ jobs:
             gradle-cache-${{ runner.os }}-gradle-
 
       - name: Install Android SDK commandline tools
+        env:
+          # runner.home can be used in step-level expressions
+          ANDROID_SDK_ROOT: ${{ runner.home }}/Android/Sdk
         run: |
           set -eux
-          SDK_ROOT="${{ runner.home }}/Android/Sdk"
+          SDK_ROOT="${ANDROID_SDK_ROOT}"
           mkdir -p "$SDK_ROOT"
           cd /tmp
           CLI_ZIP="commandlinetools.zip"
@@ -54,9 +53,11 @@ jobs:
         shell: bash
 
       - name: Create local.properties and temporary keystore for CI
+        env:
+          ANDROID_SDK_ROOT: ${{ runner.home }}/Android/Sdk
         run: |
           set -eux
-          SDK_DIR="${{ runner.home }}/Android/Sdk"
+          SDK_DIR="${ANDROID_SDK_ROOT}"
           KEYSTORE_PATH="${{ github.workspace }}/ci-keystore.jks"
           KEY_ALIAS="ci-key"
           KEY_PASSWORD="android"
@@ -82,7 +83,9 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon --stacktrace --info
+        # 在 step-level env 中引用 steps.setup-java.outputs.java-home（此时 setup-java 已运行）
         env:
           ANDROID_SDK_ROOT: ${{ runner.home }}/Android/Sdk
           ANDROID_HOME: ${{ runner.home }}/Android/Sdk
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+        run: ./gradlew build --no-daemon --stacktrace --info
