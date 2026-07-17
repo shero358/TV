@@ -2,25 +2,87 @@ name: Android CI
 
 on:
   push:
-    branches: [ "fongmi" ]
+    branches: ["fongmi"]
   pull_request:
-    branches: [ "fongmi" ]
+    branches: ["fongmi"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    env:
+      JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+      ANDROID_SDK_ROOT: ${{ runner.home }}/Android/Sdk
+      ANDROID_HOME: ${{ runner.home }}/Android/Sdk
 
     steps:
-    - uses: actions/checkout@v4
-    - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build --stacktrace --info
+      - name: Set up JDK 21
+        id: setup-java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Cache Gradle directories
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-cache-${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', '**/*.gradle*', '**/build.gradle*') }}
+          restore-keys: |
+            gradle-cache-${{ runner.os }}-gradle-
+
+      - name: Install Android SDK commandline tools
+        run: |
+          set -eux
+          SDK_ROOT="${{ runner.home }}/Android/Sdk"
+          mkdir -p "$SDK_ROOT"
+          cd /tmp
+          CLI_ZIP="commandlinetools.zip"
+          # 如果链接失效，请替换为最新 commandlinetools 的 URL
+          wget -q -O "$CLI_ZIP" "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+          unzip -q "$CLI_ZIP" -d cmdline-tools
+          mkdir -p "$SDK_ROOT/cmdline-tools/latest"
+          mv cmdline-tools/cmdline-tools/* "$SDK_ROOT/cmdline-tools/latest/" || true
+          export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses >/dev/null
+          sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        shell: bash
+
+      - name: Create local.properties and temporary keystore for CI
+        run: |
+          set -eux
+          SDK_DIR="${{ runner.home }}/Android/Sdk"
+          KEYSTORE_PATH="${{ github.workspace }}/ci-keystore.jks"
+          KEY_ALIAS="ci-key"
+          KEY_PASSWORD="android"
+          STORE_PASSWORD="android"
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -storepass "$STORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -alias "$KEY_ALIAS" \
+              -dname "CN=CI,OU=CI,O=CI,L=CI,ST=CI,C=CN" \
+              -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          cat > local.properties <<EOF
+                sdk.dir=${SDK_DIR}
+                storeFile=${KEYSTORE_PATH}
+                keyAlias=${KEY_ALIAS}
+                storePassword=${STORE_PASSWORD}
+                keyPassword=${KEY_PASSWORD}
+                EOF
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon --stacktrace --info
+        env:
+          ANDROID_SDK_ROOT: ${{ runner.home }}/Android/Sdk
+          ANDROID_HOME: ${{ runner.home }}/Android/Sdk
