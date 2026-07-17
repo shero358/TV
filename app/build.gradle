@@ -16,7 +16,6 @@ if (localPropsFile.exists()) {
     localProps['keyPassword'] = System.getenv('KEY_PASSWORD') ?: 'android'
 }
 
-
 android {
     namespace = 'com.fongmi.android.tv'
 
@@ -61,10 +60,14 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(localProps['storeFile'])
-            keyAlias localProps['keyAlias']
-            keyPassword localProps['keyPassword']
-            storePassword localProps['storePassword']
+            // 延迟验证，避免在评估阶段失败
+            def keystore = file(localProps['storeFile'] ?: "${project.rootDir}/ci-keystore.jks")
+            if (keystore.exists()) {
+                storeFile keystore
+                keyAlias localProps['keyAlias'] ?: 'ci-key'
+                keyPassword localProps['keyPassword'] ?: 'android'
+                storePassword localProps['storePassword'] ?: 'android'
+            }
         }
     }
 
@@ -72,7 +75,11 @@ android {
         release {
             minifyEnabled = true
             shrinkResources = true
-            signingConfig = signingConfigs.release
+            // 仅在 keystore 存在时应用签名配置
+            def keystore = file(localProps['storeFile'] ?: "${project.rootDir}/ci-keystore.jks")
+            if (keystore.exists()) {
+                signingConfig = signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
         }
     }
