@@ -49,34 +49,13 @@ jobs:
           mkdir -p "$SDK_ROOT"
           cd /tmp
           CLI_ZIP="commandlinetools.zip"
-          # 如果 URL 过期，请从 Google 替换为最新的 commandlinetools 包 URL
           wget -q -O "$CLI_ZIP" "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
           unzip -q "$CLI_ZIP" -d cmdline-tools
           mkdir -p "$SDK_ROOT/cmdline-tools/latest"
           mv cmdline-tools/cmdline-tools/* "$SDK_ROOT/cmdline-tools/latest/" || true
           export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          # 接受许可证（sdkmanager 可能关闭管道 -> 忽略返回码）
           yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses || true
-          # 安装与项目 compileSdk 匹配的 platform-tools、platform 和 build-tools
-          # 根据 libs.versions.toml 中的配置调整版本号
           sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-        shell: bash
-
-      - name: Create gradle.properties for CI
-        env:
-          ACTIONS_JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
-        run: |
-          set -eux
-          # 使用 actions/setup-java 安装的 JDK，避免 gradle 尝试自动下载工具链
-          # 注意：不写入 org.gradle.java.home，避免把空字符串传给 Gradle
-          cat > gradle.properties <<EOF
-          # Use the JDK supplied by actions/setup-java
-          org.gradle.java.installations.auto-download=false
-          org.gradle.jvm.version=21
-          # Gradle daemon configuration
-          org.gradle.daemon=false
-          EOF
-          echo "✅ gradle.properties created successfully (JAVA_HOME will be used at runtime)"
         shell: bash
 
       - name: Create local.properties and temporary keystore for CI
@@ -90,7 +69,6 @@ jobs:
           
           echo "📝 Generating keystore for CI environment..."
           
-          # 生成签名密钥库
           keytool -genkeypair -v \
             -keystore "$KEYSTORE_PATH" \
             -storepass "$STORE_PASSWORD" \
@@ -99,19 +77,16 @@ jobs:
             -dname "CN=CI,OU=CI,O=CI,L=CI,ST=CI,C=CN" \
             -keyalg RSA -keysize 2048 -validity 10000
           
-          # 验证 keystore 已创建
           if [ ! -f "$KEYSTORE_PATH" ]; then
             echo "❌ Keystore generation failed!"
             exit 1
           fi
           
-          # 验证 keystore 完整性
           keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" || {
             echo "❌ Keystore verification failed!"
             exit 1
           }
           
-          # 创建 local.properties
           cat > local.properties <<EOF
           sdk.dir=${SDK_DIR}
           storeFile=${KEYSTORE_PATH}
@@ -122,8 +97,6 @@ jobs:
           
           echo "✅ Keystore created successfully at: $KEYSTORE_PATH"
           echo "✅ local.properties created successfully"
-          
-          # 打印配置（不包含密码）
           echo ""
           echo "📋 Build Configuration:"
           echo "  SDK Directory: ${SDK_DIR}"
