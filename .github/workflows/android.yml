@@ -69,16 +69,31 @@ jobs:
           KEY_ALIAS="ci-key"
           KEY_PASSWORD="android"
           STORE_PASSWORD="android"
-          # 生成签名文件（以便 app 的 signingConfig 在配置阶段可以读取 local.properties）
+          
+          echo "📝 Generating keystore for CI environment..."
+          
+          # 生成签名密钥库
+          keytool -genkeypair -v \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            -dname "CN=CI,OU=CI,O=CI,L=CI,ST=CI,C=CN" \
+            -keyalg RSA -keysize 2048 -validity 10000
+          
+          # 验证 keystore 已创建
           if [ ! -f "$KEYSTORE_PATH" ]; then
-            keytool -genkeypair -v \
-              -keystore "$KEYSTORE_PATH" \
-              -storepass "$STORE_PASSWORD" \
-              -keypass "$KEY_PASSWORD" \
-              -alias "$KEY_ALIAS" \
-              -dname "CN=CI,OU=CI,O=CI,L=CI,ST=CI,C=CN" \
-              -keyalg RSA -keysize 2048 -validity 10000
+            echo "❌ Keystore generation failed!"
+            exit 1
           fi
+          
+          # 验证 keystore 完整性
+          keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" || {
+            echo "❌ Keystore verification failed!"
+            exit 1
+          }
+          
+          # 创建 local.properties
           cat > local.properties <<EOF
           sdk.dir=${SDK_DIR}
           storeFile=${KEYSTORE_PATH}
@@ -86,6 +101,16 @@ jobs:
           storePassword=${STORE_PASSWORD}
           keyPassword=${KEY_PASSWORD}
           EOF
+          
+          echo "✅ Keystore created successfully at: $KEYSTORE_PATH"
+          echo "✅ local.properties created successfully"
+          
+          # 打印配置（不包含密码）
+          echo ""
+          echo "📋 Build Configuration:"
+          echo "  SDK Directory: ${SDK_DIR}"
+          echo "  Keystore Path: ${KEYSTORE_PATH}"
+          echo "  Key Alias: ${KEY_ALIAS}"
         shell: bash
 
       - name: Grant execute permission for gradlew
@@ -100,4 +125,16 @@ jobs:
           KEY_ALIAS: ci-key
           STORE_PASSWORD: android
           KEY_PASSWORD: android
-        run: ./gradlew build --no-daemon --stacktrace --info
+        run: |
+          echo "🔨 Starting Gradle build..."
+          ./gradlew build --no-daemon --stacktrace --info
+          echo "✅ Build completed successfully!"
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apks
+          path: |
+            app/build/outputs/apk/*/release/*.apk
+          retention-days: 7
