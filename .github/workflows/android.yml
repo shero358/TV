@@ -67,16 +67,16 @@ jobs:
           ACTIONS_JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
           set -eux
-          # 使用 actions/setup-java 安装的 JDK，指向 gradle 的 java.home，避免 gradle 尝试自动下载工具链
+          # 使用 actions/setup-java 安装的 JDK，避免 gradle 尝试自动下载工具链
+          # 注意：不写入 org.gradle.java.home，避免把空字符串传给 Gradle
           cat > gradle.properties <<EOF
           # Use the JDK supplied by actions/setup-java
           org.gradle.java.installations.auto-download=false
-          org.gradle.java.home=${ACTIONS_JAVA_HOME}
           org.gradle.jvm.version=21
           # Gradle daemon configuration
           org.gradle.daemon=false
           EOF
-          echo "✅ gradle.properties created successfully (pointing to ${ACTIONS_JAVA_HOME})"
+          echo "✅ gradle.properties created successfully (JAVA_HOME will be used at runtime)"
         shell: bash
 
       - name: Create local.properties and temporary keystore for CI
