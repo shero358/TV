@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -33,24 +35,25 @@ jobs:
             gradle-cache-${{ runner.os }}-gradle-
 
       - name: Install Android SDK commandline tools
+        env:
+          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
           set -eux
           SDK_ROOT="$HOME/Android/Sdk"
           mkdir -p "$SDK_ROOT"
           cd /tmp
           CLI_ZIP="commandlinetools.zip"
-          # 如果链接失效，请替换为最新 commandlinetools 的 URL
+          # If the URL expires, replace with the current commandlinetools package URL from Google.
           wget -q -O "$CLI_ZIP" "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
           unzip -q "$CLI_ZIP" -d cmdline-tools
           mkdir -p "$SDK_ROOT/cmdline-tools/latest"
           mv cmdline-tools/cmdline-tools/* "$SDK_ROOT/cmdline-tools/latest/" || true
           export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses >/dev/null
+          # Accept licenses (sdkmanager may close the pipe -> ignore return code)
+          yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses || true
+          # Install platform-tools and platform/build-tools matching project compileSdk
           sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
         shell: bash
-        env:
-          # 保证 sdkmanager 能找到 java（setup-java 已经设置 JAVA_HOME）
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
 
       - name: Create local.properties and temporary keystore for CI
         run: |
@@ -60,6 +63,7 @@ jobs:
           KEY_ALIAS="ci-key"
           KEY_PASSWORD="android"
           STORE_PASSWORD="android"
+          # generate keystore (so app's signingConfig can read local.properties during configuration)
           if [ ! -f "$KEYSTORE_PATH" ]; then
             keytool -genkeypair -v \
               -keystore "$KEYSTORE_PATH" \
