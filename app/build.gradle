@@ -60,13 +60,17 @@ android {
 
     signingConfigs {
         release {
-            // 延迟验证，避免在评估阶段失败
-            def keystore = file(localProps['storeFile'] ?: "${project.rootDir}/ci-keystore.jks")
-            if (keystore.exists()) {
-                storeFile keystore
-                keyAlias localProps['keyAlias'] ?: 'ci-key'
-                keyPassword localProps['keyPassword'] ?: 'android'
-                storePassword localProps['storePassword'] ?: 'android'
+            // 安全处理 keystore 路径，确保在评估阶段不会失败
+            def storeFilePath = localProps['storeFile']?.toString() ?: "${project.rootDir}/ci-keystore.jks"
+            def keystoreFile = file(storeFilePath)
+            
+            if (keystoreFile.exists()) {
+                storeFile keystoreFile
+                keyAlias localProps['keyAlias']?.toString() ?: 'ci-key'
+                keyPassword localProps['keyPassword']?.toString() ?: 'android'
+                storePassword localProps['storePassword']?.toString() ?: 'android'
+            } else {
+                logger.warn("⚠️ Keystore file not found at: ${storeFilePath}")
             }
         }
     }
@@ -75,11 +79,16 @@ android {
         release {
             minifyEnabled = true
             shrinkResources = true
+            
             // 仅在 keystore 存在时应用签名配置
-            def keystore = file(localProps['storeFile'] ?: "${project.rootDir}/ci-keystore.jks")
-            if (keystore.exists()) {
+            def storeFilePath = localProps['storeFile']?.toString() ?: "${project.rootDir}/ci-keystore.jks"
+            if (file(storeFilePath).exists()) {
                 signingConfig = signingConfigs.release
+                logger.lifecycle("✅ Release build will be signed with keystore: ${storeFilePath}")
+            } else {
+                logger.warn("⚠️ Release build will be unsigned (keystore not found)")
             }
+            
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
         }
     }
