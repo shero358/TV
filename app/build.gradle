@@ -3,6 +3,18 @@ plugins {
 }
 
 def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream {
+        localProps.load(it)
+    }
+} else {
+    // 为 CI 环境或本地开发提供默认值
+    localProps['storeFile'] = System.getenv('KEYSTORE_PATH') ?: "${project.rootDir}/ci-keystore.jks"
+    localProps['keyAlias'] = System.getenv('KEY_ALIAS') ?: 'ci-key'
+    localProps['storePassword'] = System.getenv('STORE_PASSWORD') ?: 'android'
+    localProps['keyPassword'] = System.getenv('KEY_PASSWORD') ?: 'android'
+}
 rootProject.file('local.properties').withInputStream {
     localProps.load(it)
 }
