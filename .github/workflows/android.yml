@@ -117,7 +117,7 @@ jobs:
           STORE_PASSWORD: android
           KEY_PASSWORD: android
         run: |
-          echo "🔨 Starting Gradle build..."
+          echo "🔨 Starting Gradle build with JAVA_HOME: $JAVA_HOME"
           ./gradlew build --no-daemon --stacktrace --info
           echo "✅ Build completed successfully!"
 
