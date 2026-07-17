@@ -122,39 +122,39 @@ dependencies {
     implementation project(':chaquo')
     implementation project(':quickjs')
     implementation libs.appcompat
-    implementation libs.lifecycle.service
+    implementation libs."lifecycle-service"
     implementation libs.media
-    implementation libs.media3-common
-    implementation libs.media3-session
-    implementation libs.media3-exoplayer
-    implementation libs.media3-ui
+    implementation libs."media3-common"
+    implementation libs."media3-session"
+    implementation libs."media3-exoplayer"
+    implementation libs."media3-ui"
     implementation libs.palette
     implementation libs.recyclerview
-    implementation libs.room.runtime
+    implementation libs."room-runtime"
     implementation libs.splashscreen
     implementation libs.swiperefreshlayout
     implementation libs.viewpager2
-    implementation libs.android.gif.drawable
+    implementation libs."android-gif-drawable"
     implementation libs.bundles.glide
     implementation libs.bundles.jupnp
     implementation libs.customactivityoncrash
     implementation libs.eventbus
     implementation libs.flexbox
-    implementation libs.rtmp.client
+    implementation libs."rtmp-client"
     implementation libs.lottie
     implementation libs.material
     implementation libs.materialdesigncolors
     implementation libs.nanohttpd
     implementation libs.newpipeextractor
     implementation libs.permissionx
-    implementation libs.simple.xml
+    implementation libs."simple-xml"
     implementation libs.textdrawable
     leanbackImplementation libs.leanback
     leanbackImplementation libs.androidautosize
     mobileImplementation libs.biometric
-    mobileImplementation libs.zxing.android.embedded
-    annotationProcessor libs.room.compiler
-    annotationProcessor libs.eventbus.annotation.processor
-    annotationProcessor libs.glide.compiler
+    mobileImplementation libs."zxing-android-embedded"
+    annotationProcessor libs."room-compiler"
+    annotationProcessor libs."eventbus-annotation-processor"
+    annotationProcessor libs."glide-compiler"
     coreLibraryDesugaring libs.desugar
 }
