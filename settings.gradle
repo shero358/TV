@@ -6,8 +6,6 @@ pluginManagement {
     }
 }
 
-// 使用 Foojay Resolver 以支持自动 JDK 工具链检测
-// 但在 CI 环境中禁用自动下载（见 gradle.properties）
 plugins {
     id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
 }
@@ -22,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-// 配置 Foojay 解析器，允许任何供应商
+// 配置工具链以接受任何 JDK 供应商
 toolchainManagement {
     jvm {
         javaRepositories {
