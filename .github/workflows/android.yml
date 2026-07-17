@@ -48,16 +48,17 @@ jobs:
           mkdir -p "$SDK_ROOT"
           cd /tmp
           CLI_ZIP="commandlinetools.zip"
-          # If the URL expires, replace with the current commandlinetools package URL from Google.
+          # 如果 URL 过期，请从 Google 替换为最新的 commandlinetools 包 URL
           wget -q -O "$CLI_ZIP" "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
           unzip -q "$CLI_ZIP" -d cmdline-tools
           mkdir -p "$SDK_ROOT/cmdline-tools/latest"
           mv cmdline-tools/cmdline-tools/* "$SDK_ROOT/cmdline-tools/latest/" || true
           export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          # Accept licenses (sdkmanager may close the pipe -> ignore return code)
+          # 接受许可证（sdkmanager 可能关闭管道 -> 忽略返回码）
           yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses || true
-          # Install platform-tools and platform/build-tools matching project compileSdk
-          sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          # 安装与项目 compileSdk 匹配的 platform-tools、platform 和 build-tools
+          # 根据 libs.versions.toml 中的配置调整版本号
+          sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
         shell: bash
 
       - name: Create local.properties and temporary keystore for CI
@@ -68,7 +69,7 @@ jobs:
           KEY_ALIAS="ci-key"
           KEY_PASSWORD="android"
           STORE_PASSWORD="android"
-          # generate keystore (so app's signingConfig can read local.properties during configuration)
+          # 生成签名文件（以便 app 的 signingConfig 在配置阶段可以读取 local.properties）
           if [ ! -f "$KEYSTORE_PATH" ]; then
             keytool -genkeypair -v \
               -keystore "$KEYSTORE_PATH" \
@@ -79,12 +80,12 @@ jobs:
               -keyalg RSA -keysize 2048 -validity 10000
           fi
           cat > local.properties <<EOF
-                sdk.dir=${SDK_DIR}
-                storeFile=${KEYSTORE_PATH}
-                keyAlias=${KEY_ALIAS}
-                storePassword=${STORE_PASSWORD}
-                keyPassword=${KEY_PASSWORD}
-                EOF
+          sdk.dir=${SDK_DIR}
+          storeFile=${KEYSTORE_PATH}
+          keyAlias=${KEY_ALIAS}
+          storePassword=${STORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          EOF
         shell: bash
 
       - name: Grant execute permission for gradlew
@@ -92,7 +93,11 @@ jobs:
 
       - name: Build with Gradle
         env:
-          ANDROID_SDK_ROOT: $HOME/Android/Sdk
-          ANDROID_HOME: $HOME/Android/Sdk
+          ANDROID_SDK_ROOT: ${{ env.HOME }}/Android/Sdk
+          ANDROID_HOME: ${{ env.HOME }}/Android/Sdk
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
+          KEYSTORE_PATH: ${{ github.workspace }}/ci-keystore.jks
+          KEY_ALIAS: ci-key
+          STORE_PASSWORD: android
+          KEY_PASSWORD: android
         run: ./gradlew build --no-daemon --stacktrace --info
