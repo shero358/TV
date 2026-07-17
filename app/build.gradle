@@ -15,9 +15,7 @@ if (localPropsFile.exists()) {
     localProps['storePassword'] = System.getenv('STORE_PASSWORD') ?: 'android'
     localProps['keyPassword'] = System.getenv('KEY_PASSWORD') ?: 'android'
 }
-rootProject.file('local.properties').withInputStream {
-    localProps.load(it)
-}
+
 
 android {
     namespace = 'com.fongmi.android.tv'
